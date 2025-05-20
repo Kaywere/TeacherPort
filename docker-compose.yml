@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pdf-viewer-frontend
+    ports:
+      - "8002:8002"
+    environment:
+      - VITE_API_URL=http://test.soss.site:5001
+    depends_on:
+      - backend
+    networks:
+      - pdf-viewer-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pdf-viewer-backend
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - NODE_ENV=production
+    networks:
+      - pdf-viewer-network
+
+networks:
+  pdf-viewer-network:
+    driver: bridge 
