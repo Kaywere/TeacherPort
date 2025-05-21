@@ -63,6 +63,6 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
 // Start server
 app.listen(port, async () => {
-    console.log(`Server is running on port ${port}`);
+    console.log(`yes Server is running on port ${port}`);
     await testDatabaseConnection();
 }); 

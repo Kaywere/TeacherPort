@@ -30,78 +30,68 @@ export const aboutMeService = {
 
     async updateAboutMe(data: Partial<AboutMe>): Promise<AboutMe> {
         try {
-            console.log('Received raw data:', JSON.stringify(data, null, 2));
+            // Define JSONB fields
+            const jsonbFields = ['education', 'experience', 'skills', 'achievements'];
+            
+            // Validate and clean JSON fields before processing
+            const cleanedData = { ...data };
+            for (const field of jsonbFields) {
+                if (field in cleanedData) {
+                    try {
+                        let value = (cleanedData as any)[field];
+                        
+                        // Ensure value is an array
+                        if (!Array.isArray(value)) {
+                            value = [];
+                        }
+                        
+                        // Clean and validate array items
+                        value = value.map((item: any) => {
+                            if (typeof item === 'object' && item !== null) {
+                                return Object.fromEntries(
+                                    Object.entries(item)
+                                        .filter(([_, v]) => v != null)
+                                        .map(([k, v]) => {
+                                            if (Array.isArray(v)) {
+                                                return [k, v.filter(Boolean)];
+                                            }
+                                            if (typeof v === 'string') {
+                                                return [k, v.trim()];
+                                            }
+                                            return [k, v];
+                                        })
+                                );
+                            }
+                            return item;
+                        }).filter(Boolean);
+                        
+                        // Validate JSON stringification
+                        const jsonStr = JSON.stringify(value);
+                        (cleanedData as any)[field] = jsonStr;
+                    } catch (e) {
+                        console.error(`Error processing ${field}:`, e);
+                        (cleanedData as any)[field] = '[]';
+                    }
+                }
+            }
             
             // Check if any record exists
             const existingRecord = await this.getAboutMe();
             
-            // Define JSONB fields
-            const jsonbFields = ['education', 'experience', 'skills', 'achievements'];
-
-            // Function to safely stringify JSON
-            const safeJsonStringify = (value: any): string => {
-                if (!value) return '[]';
-                try {
-                    // First convert the value to a proper array if it's not already
-                    const arrayValue = Array.isArray(value) ? value : [];
-                    
-                    // Clean and validate each item in the array
-                    const cleanArray = arrayValue.map(item => {
-                        if (typeof item === 'object' && item !== null) {
-                            // Remove any undefined or null values
-                            const cleanItem = Object.fromEntries(
-                                Object.entries(item)
-                                    .filter(([_, v]) => v != null)
-                                    .map(([k, v]) => {
-                                        if (Array.isArray(v)) {
-                                            // Handle nested arrays (like responsibilities)
-                                            return [k, v.map(str => 
-                                                typeof str === 'string' ? str.trim() : str
-                                            ).filter(Boolean)];
-                                        }
-                                        if (typeof v === 'string') {
-                                            return [k, v.trim()];
-                                        }
-                                        return [k, v];
-                                    })
-                            );
-                            return cleanItem;
-                        }
-                        return item;
-                    }).filter(Boolean); // Remove any null/undefined items from the array
-                    
-                    const jsonStr = JSON.stringify(cleanArray);
-                    // Validate that we can parse it back
-                    JSON.parse(jsonStr);
-                    return jsonStr;
-                } catch (e) {
-                    console.error('Error in safeJsonStringify:', e);
-                    return '[]';
-                }
-            };
-            
             if (existingRecord) {
                 // Update existing record
-                // Remove updated_at and created_at if present in data
-                const fields = Object.keys(data).filter(field => !['updated_at', 'created_at', 'id'].includes(field));
-                const values = fields.map(field => {
-                    const value = (data as any)[field];
-                    // Handle JSONB fields
-                    if (jsonbFields.includes(field)) {
-                        const jsonStr = safeJsonStringify(value);
-                        console.log(`Field ${field} processed JSON:`, jsonStr);
-                        return jsonStr;
-                    }
-                    return value;
-                });
+                const fields = Object.keys(cleanedData).filter(field => 
+                    !['updated_at', 'created_at', 'id'].includes(field)
+                );
                 
                 const setClause = fields.map((field, index) => {
-                    // Cast JSONB fields explicitly
                     if (jsonbFields.includes(field)) {
                         return `${field} = CAST($${index + 1} AS jsonb)`;
                     }
                     return `${field} = $${index + 1}`;
                 }).join(', ');
+                
+                const values = fields.map(field => (cleanedData as any)[field]);
                 
                 const query = `
                     UPDATE about_me 
@@ -110,21 +100,23 @@ export const aboutMeService = {
                     RETURNING *
                 `;
                 
-                console.log('Update Query:', query);
-                console.log('Update Values:', JSON.stringify(values, null, 2));
-                
                 const result = await pool.query(query, [...values, existingRecord.id]);
                 return result.rows[0];
             } else {
-                // Similar changes for insert...
-                const fields = Object.keys(data).filter(field => !['updated_at', 'created_at', 'id'].includes(field));
+                // Insert new record
+                const fields = Object.keys(cleanedData).filter(field => 
+                    !['updated_at', 'created_at', 'id'].includes(field)
+                );
+                
                 const placeholders = fields.map((field, index) => {
                     if (jsonbFields.includes(field)) {
                         return `CAST($${index + 1} AS jsonb)`;
                     }
                     return `$${index + 1}`;
                 }).join(', ');
+                
                 const columns = fields.join(', ');
+                const values = fields.map(field => (cleanedData as any)[field]);
                 
                 const query = `
                     INSERT INTO about_me (${columns})
@@ -132,33 +124,11 @@ export const aboutMeService = {
                     RETURNING *
                 `;
                 
-                const values = fields.map(field => {
-                    const value = (data as any)[field];
-                    if (jsonbFields.includes(field)) {
-                        const jsonStr = safeJsonStringify(value);
-                        console.log(`Field ${field} processed JSON:`, jsonStr);
-                        return jsonStr;
-                    }
-                    return value;
-                });
-                
-                console.log('Insert Query:', query);
-                console.log('Insert Values:', JSON.stringify(values, null, 2));
-                
                 const result = await pool.query(query, values);
                 return result.rows[0];
             }
         } catch (error) {
             console.error('Error in updateAboutMe:', error);
-            if (error && typeof error === 'object' && 'message' in error) {
-                console.error('Error details:', {
-                    message: (error as any).message,
-                    detail: (error as any).detail,
-                    where: (error as any).where,
-                    query: (error as any).query,
-                    parameters: (error as any).parameters
-                });
-            }
             throw error;
         }
     },
