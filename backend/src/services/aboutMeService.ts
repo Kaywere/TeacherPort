@@ -30,11 +30,39 @@ export const aboutMeService = {
 
     async updateAboutMe(data: Partial<AboutMe>): Promise<AboutMe> {
         try {
+            console.log('Received data:', JSON.stringify(data, null, 2));
+            
             // Check if any record exists
             const existingRecord = await this.getAboutMe();
             
             // Define JSONB fields
             const jsonbFields = ['education', 'experience', 'skills', 'achievements'];
+
+            // Function to safely stringify JSON
+            const safeJsonStringify = (value: any): string => {
+                if (!value) return '[]';
+                try {
+                    if (Array.isArray(value)) {
+                        // Ensure each object in array has proper JSON structure
+                        const cleanArray = value.map(item => {
+                            if (typeof item === 'object') {
+                                return Object.fromEntries(
+                                    Object.entries(item).map(([k, v]) => [
+                                        k,
+                                        typeof v === 'string' ? v.trim() : v
+                                    ])
+                                );
+                            }
+                            return item;
+                        });
+                        return JSON.stringify(cleanArray);
+                    }
+                    return '[]';
+                } catch (e) {
+                    console.error('Error in safeJsonStringify:', e);
+                    return '[]';
+                }
+            };
             
             if (existingRecord) {
                 // Update existing record
@@ -44,9 +72,9 @@ export const aboutMeService = {
                     const value = (data as any)[field];
                     // Handle JSONB fields
                     if (jsonbFields.includes(field)) {
-                        // Ensure the field is an array, even if empty
-                        const arrayValue = Array.isArray(value) ? value : [];
-                        return JSON.stringify(arrayValue);
+                        const jsonStr = safeJsonStringify(value);
+                        console.log(`Field ${field} JSON:`, jsonStr);
+                        return jsonStr;
                     }
                     return value;
                 });
@@ -93,9 +121,9 @@ export const aboutMeService = {
                     const value = (data as any)[field];
                     // Handle JSONB fields
                     if (jsonbFields.includes(field)) {
-                        // Ensure the field is an array, even if empty
-                        const arrayValue = Array.isArray(value) ? value : [];
-                        return JSON.stringify(arrayValue);
+                        const jsonStr = safeJsonStringify(value);
+                        console.log(`Field ${field} JSON:`, jsonStr);
+                        return jsonStr;
                     }
                     return value;
                 });
