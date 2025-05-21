@@ -71,6 +71,6 @@ app.use((err, req, res, next) => {
 });
 // Start server
 app.listen(port, () => __awaiter(void 0, void 0, void 0, function* () {
-    console.log(`Server is running on port ${port}`);
+    console.log(`Yes Server is running on port ${port}`);
     yield testDatabaseConnection();
 }));

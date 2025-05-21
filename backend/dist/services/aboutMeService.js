@@ -30,33 +30,96 @@ exports.aboutMeService = {
     updateAboutMe(data) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
+                // Define JSONB fields
+                const jsonbFields = ['education', 'experience', 'skills', 'achievements'];
+                
+                // Validate and clean JSON fields before processing
+                const cleanedData = Object.assign({}, data);
+                for (const field of jsonbFields) {
+                    if (field in cleanedData) {
+                        try {
+                            let value = cleanedData[field];
+                            
+                            // Ensure value is an array
+                            if (!Array.isArray(value)) {
+                                value = [];
+                            }
+                            
+                            // Clean and validate array items
+                            value = value.map((item) => {
+                                if (typeof item === 'object' && item !== null) {
+                                    return Object.fromEntries(Object.entries(item)
+                                        .filter(([_, v]) => v != null)
+                                        .map(([k, v]) => {
+                                            if (Array.isArray(v)) {
+                                                return [k, v.filter(Boolean)];
+                                            }
+                                            if (typeof v === 'string') {
+                                                return [k, v.trim()];
+                                            }
+                                            return [k, v];
+                                        }));
+                                }
+                                return item;
+                            }).filter(Boolean);
+                            
+                            // Validate JSON stringification
+                            const jsonStr = JSON.stringify(value);
+                            cleanedData[field] = jsonStr;
+                        }
+                        catch (e) {
+                            console.error(`Error processing ${field}:`, e);
+                            cleanedData[field] = '[]';
+                        }
+                    }
+                }
+                
                 // Check if any record exists
                 const existingRecord = yield this.getAboutMe();
+                
                 if (existingRecord) {
                     // Update existing record
-                    const fields = Object.keys(data);
-                    const values = Object.values(data);
-                    const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+                    const fields = Object.keys(cleanedData).filter(field => !['updated_at', 'created_at', 'id'].includes(field));
+                    
+                    const setClause = fields.map((field, index) => {
+                        if (jsonbFields.includes(field)) {
+                            return `${field} = CAST($${index + 1} AS jsonb)`;
+                        }
+                        return `${field} = $${index + 1}`;
+                    }).join(', ');
+                    
+                    const values = fields.map(field => cleanedData[field]);
+                    
                     const query = `
-                    UPDATE about_me 
-                    SET ${setClause}, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = $${values.length + 1}
-                    RETURNING *
-                `;
+                        UPDATE about_me 
+                        SET ${setClause}, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = $${values.length + 1}
+                        RETURNING *
+                    `;
+                    
                     const result = yield db_1.default.query(query, [...values, existingRecord.id]);
                     return result.rows[0];
                 }
                 else {
-                    // Insert new record if none exists
-                    const fields = Object.keys(data);
-                    const placeholders = fields.map((_, index) => `$${index + 1}`).join(', ');
+                    // Insert new record
+                    const fields = Object.keys(cleanedData).filter(field => !['updated_at', 'created_at', 'id'].includes(field));
+                    
+                    const placeholders = fields.map((field, index) => {
+                        if (jsonbFields.includes(field)) {
+                            return `CAST($${index + 1} AS jsonb)`;
+                        }
+                        return `$${index + 1}`;
+                    }).join(', ');
+                    
                     const columns = fields.join(', ');
+                    const values = fields.map(field => cleanedData[field]);
+                    
                     const query = `
-                    INSERT INTO about_me (${columns})
-                    VALUES (${placeholders})
-                    RETURNING *
-                `;
-                    const values = Object.values(data);
+                        INSERT INTO about_me (${columns})
+                        VALUES (${placeholders})
+                        RETURNING *
+                    `;
+                    
                     const result = yield db_1.default.query(query, values);
                     return result.rows[0];
                 }
