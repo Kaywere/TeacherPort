@@ -95,4 +95,20 @@ router.post('/:id/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// حذف ملف الشاهد
+router.delete('/:id/file', async (req, res) => {
+  try {
+    const evidence = await evidenceService.getEvidenceById(req.params.id);
+    if (!evidence) {
+      return res.status(404).json({ error: 'Evidence not found' });
+    }
+
+    await evidenceService.deleteEvidenceFile(req.params.id);
+    res.json({ message: 'File deleted successfully' });
+  } catch (error) {
+    console.error('Error in DELETE /evidences/:id/file:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router; 

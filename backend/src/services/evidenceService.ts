@@ -94,5 +94,33 @@ export const evidenceService = {
       console.error('Error in evidenceService.updateEvidenceFile:', error);
       throw error;
     }
+  },
+
+  // حذف ملف الشاهد
+  async deleteEvidenceFile(id: string): Promise<void> {
+    try {
+      if (!id) {
+        throw new Error('Evidence ID is required');
+      }
+
+      const result = await pool.query(
+        `UPDATE evidences 
+         SET file_data = NULL, 
+             file_name = NULL, 
+             mime_type = NULL, 
+             file_type = NULL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1
+         RETURNING *`,
+        [id]
+      );
+
+      if (!result.rows[0]) {
+        throw new Error('Evidence not found');
+      }
+    } catch (error) {
+      console.error('Error in evidenceService.deleteEvidenceFile:', error);
+      throw error;
+    }
   }
 }; 

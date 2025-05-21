@@ -78,5 +78,30 @@ exports.evidenceService = {
                 throw error;
             }
         });
+    },
+    // حذف ملف الشاهد
+    deleteEvidenceFile(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!id) {
+                    throw new Error('Evidence ID is required');
+                }
+                const result = yield db_1.default.query(`UPDATE evidences 
+         SET file_data = NULL, 
+             file_name = NULL, 
+             mime_type = NULL, 
+             file_type = NULL,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1
+         RETURNING *`, [id]);
+                if (!result.rows[0]) {
+                    throw new Error('Evidence not found');
+                }
+            }
+            catch (error) {
+                console.error('Error in evidenceService.deleteEvidenceFile:', error);
+                throw error;
+            }
+        });
     }
 };

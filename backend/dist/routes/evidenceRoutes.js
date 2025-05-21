@@ -97,4 +97,19 @@ router.post('/:id/upload', upload.single('file'), (req, res) => __awaiter(void 0
         res.status(500).json({ error: 'Internal server error' });
     }
 }));
+// حذف ملف الشاهد
+router.delete('/:id/file', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const evidence = yield evidenceService_1.evidenceService.getEvidenceById(req.params.id);
+        if (!evidence) {
+            return res.status(404).json({ error: 'Evidence not found' });
+        }
+        yield evidenceService_1.evidenceService.deleteEvidenceFile(req.params.id);
+        res.json({ message: 'File deleted successfully' });
+    }
+    catch (error) {
+        console.error('Error in DELETE /evidences/:id/file:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}));
 exports.default = router;
