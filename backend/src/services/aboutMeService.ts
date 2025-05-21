@@ -39,8 +39,29 @@ export const aboutMeService = {
                 const fields = Object.keys(data).filter(field => field !== 'updated_at');
                 const values = fields.map(field => {
                     const value = (data as any)[field];
-                    return typeof value === 'object' ? JSON.stringify(value) : value;
+                    // Ensure arrays are properly stringified as JSON
+                    if (Array.isArray(value)) {
+                        return JSON.stringify(value.map(item => {
+                            if (typeof item === 'object') {
+                                // Clean object values
+                                const cleanObj = { ...item };
+                                Object.keys(cleanObj).forEach(key => {
+                                    if (Array.isArray(cleanObj[key])) {
+                                        cleanObj[key] = cleanObj[key].map((val: any) => 
+                                            typeof val === 'string' ? val.trim() : val
+                                        );
+                                    } else if (typeof cleanObj[key] === 'string') {
+                                        cleanObj[key] = cleanObj[key].trim();
+                                    }
+                                });
+                                return cleanObj;
+                            }
+                            return item;
+                        }));
+                    }
+                    return value;
                 });
+                
                 const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
                 
                 const query = `
@@ -66,7 +87,27 @@ export const aboutMeService = {
                 
                 const values = fields.map(field => {
                     const value = (data as any)[field];
-                    return typeof value === 'object' ? JSON.stringify(value) : value;
+                    // Ensure arrays are properly stringified as JSON
+                    if (Array.isArray(value)) {
+                        return JSON.stringify(value.map(item => {
+                            if (typeof item === 'object') {
+                                // Clean object values
+                                const cleanObj = { ...item };
+                                Object.keys(cleanObj).forEach(key => {
+                                    if (Array.isArray(cleanObj[key])) {
+                                        cleanObj[key] = cleanObj[key].map((val: any) => 
+                                            typeof val === 'string' ? val.trim() : val
+                                        );
+                                    } else if (typeof cleanObj[key] === 'string') {
+                                        cleanObj[key] = cleanObj[key].trim();
+                                    }
+                                });
+                                return cleanObj;
+                            }
+                            return item;
+                        }));
+                    }
+                    return value;
                 });
                 
                 const result = await pool.query(query, values);
