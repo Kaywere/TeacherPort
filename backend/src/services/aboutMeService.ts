@@ -30,7 +30,7 @@ export const aboutMeService = {
 
     async updateAboutMe(data: Partial<AboutMe>): Promise<AboutMe> {
         try {
-            console.log('Received data:', JSON.stringify(data, null, 2));
+            console.log('Received raw data:', JSON.stringify(data, null, 2));
             
             // Check if any record exists
             const existingRecord = await this.getAboutMe();
@@ -42,22 +42,38 @@ export const aboutMeService = {
             const safeJsonStringify = (value: any): string => {
                 if (!value) return '[]';
                 try {
-                    if (Array.isArray(value)) {
-                        // Ensure each object in array has proper JSON structure
-                        const cleanArray = value.map(item => {
-                            if (typeof item === 'object') {
-                                return Object.fromEntries(
-                                    Object.entries(item).map(([k, v]) => [
-                                        k,
-                                        typeof v === 'string' ? v.trim() : v
-                                    ])
-                                );
-                            }
-                            return item;
-                        });
-                        return JSON.stringify(cleanArray);
-                    }
-                    return '[]';
+                    // First convert the value to a proper array if it's not already
+                    const arrayValue = Array.isArray(value) ? value : [];
+                    
+                    // Clean and validate each item in the array
+                    const cleanArray = arrayValue.map(item => {
+                        if (typeof item === 'object' && item !== null) {
+                            // Remove any undefined or null values
+                            const cleanItem = Object.fromEntries(
+                                Object.entries(item)
+                                    .filter(([_, v]) => v != null)
+                                    .map(([k, v]) => {
+                                        if (Array.isArray(v)) {
+                                            // Handle nested arrays (like responsibilities)
+                                            return [k, v.map(str => 
+                                                typeof str === 'string' ? str.trim() : str
+                                            ).filter(Boolean)];
+                                        }
+                                        if (typeof v === 'string') {
+                                            return [k, v.trim()];
+                                        }
+                                        return [k, v];
+                                    })
+                            );
+                            return cleanItem;
+                        }
+                        return item;
+                    }).filter(Boolean); // Remove any null/undefined items from the array
+                    
+                    const jsonStr = JSON.stringify(cleanArray);
+                    // Validate that we can parse it back
+                    JSON.parse(jsonStr);
+                    return jsonStr;
                 } catch (e) {
                     console.error('Error in safeJsonStringify:', e);
                     return '[]';
@@ -66,14 +82,14 @@ export const aboutMeService = {
             
             if (existingRecord) {
                 // Update existing record
-                // Remove updated_at if present in data
-                const fields = Object.keys(data).filter(field => field !== 'updated_at');
+                // Remove updated_at and created_at if present in data
+                const fields = Object.keys(data).filter(field => !['updated_at', 'created_at', 'id'].includes(field));
                 const values = fields.map(field => {
                     const value = (data as any)[field];
                     // Handle JSONB fields
                     if (jsonbFields.includes(field)) {
                         const jsonStr = safeJsonStringify(value);
-                        console.log(`Field ${field} JSON:`, jsonStr);
+                        console.log(`Field ${field} processed JSON:`, jsonStr);
                         return jsonStr;
                     }
                     return value;
@@ -82,7 +98,7 @@ export const aboutMeService = {
                 const setClause = fields.map((field, index) => {
                     // Cast JSONB fields explicitly
                     if (jsonbFields.includes(field)) {
-                        return `${field} = $${index + 1}::jsonb`;
+                        return `${field} = CAST($${index + 1} AS jsonb)`;
                     }
                     return `${field} = $${index + 1}`;
                 }).join(', ');
@@ -100,12 +116,11 @@ export const aboutMeService = {
                 const result = await pool.query(query, [...values, existingRecord.id]);
                 return result.rows[0];
             } else {
-                // Insert new record if none exists
-                const fields = Object.keys(data);
+                // Similar changes for insert...
+                const fields = Object.keys(data).filter(field => !['updated_at', 'created_at', 'id'].includes(field));
                 const placeholders = fields.map((field, index) => {
-                    // Cast JSONB fields explicitly
                     if (jsonbFields.includes(field)) {
-                        return `$${index + 1}::jsonb`;
+                        return `CAST($${index + 1} AS jsonb)`;
                     }
                     return `$${index + 1}`;
                 }).join(', ');
@@ -119,10 +134,9 @@ export const aboutMeService = {
                 
                 const values = fields.map(field => {
                     const value = (data as any)[field];
-                    // Handle JSONB fields
                     if (jsonbFields.includes(field)) {
                         const jsonStr = safeJsonStringify(value);
-                        console.log(`Field ${field} JSON:`, jsonStr);
+                        console.log(`Field ${field} processed JSON:`, jsonStr);
                         return jsonStr;
                     }
                     return value;
@@ -140,7 +154,9 @@ export const aboutMeService = {
                 console.error('Error details:', {
                     message: (error as any).message,
                     detail: (error as any).detail,
-                    where: (error as any).where
+                    where: (error as any).where,
+                    query: (error as any).query,
+                    parameters: (error as any).parameters
                 });
             }
             throw error;
