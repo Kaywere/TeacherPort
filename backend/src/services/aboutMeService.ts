@@ -39,25 +39,17 @@ export const aboutMeService = {
                 const fields = Object.keys(data).filter(field => field !== 'updated_at');
                 const values = fields.map(field => {
                     const value = (data as any)[field];
-                    // Ensure arrays are properly stringified as JSON
-                    if (Array.isArray(value)) {
-                        return JSON.stringify(value.map(item => {
-                            if (typeof item === 'object') {
-                                // Clean object values
-                                const cleanObj = { ...item };
-                                Object.keys(cleanObj).forEach(key => {
-                                    if (Array.isArray(cleanObj[key])) {
-                                        cleanObj[key] = cleanObj[key].map((val: any) => 
-                                            typeof val === 'string' ? val.trim() : val
-                                        );
-                                    } else if (typeof cleanObj[key] === 'string') {
-                                        cleanObj[key] = cleanObj[key].trim();
-                                    }
-                                });
-                                return cleanObj;
-                            }
-                            return item;
-                        }));
+                    // Handle arrays and objects
+                    if (typeof value === 'object') {
+                        try {
+                            // First convert to string and then parse to ensure valid JSON
+                            const jsonStr = JSON.stringify(value);
+                            JSON.parse(jsonStr); // Validate JSON
+                            return jsonStr;
+                        } catch (e) {
+                            console.error(`Error stringifying field ${field}:`, e);
+                            return null;
+                        }
                     }
                     return value;
                 });
@@ -70,6 +62,9 @@ export const aboutMeService = {
                     WHERE id = $${values.length + 1}
                     RETURNING *
                 `;
+                
+                console.log('Update Query:', query);
+                console.log('Update Values:', values);
                 
                 const result = await pool.query(query, [...values, existingRecord.id]);
                 return result.rows[0];
@@ -87,34 +82,36 @@ export const aboutMeService = {
                 
                 const values = fields.map(field => {
                     const value = (data as any)[field];
-                    // Ensure arrays are properly stringified as JSON
-                    if (Array.isArray(value)) {
-                        return JSON.stringify(value.map(item => {
-                            if (typeof item === 'object') {
-                                // Clean object values
-                                const cleanObj = { ...item };
-                                Object.keys(cleanObj).forEach(key => {
-                                    if (Array.isArray(cleanObj[key])) {
-                                        cleanObj[key] = cleanObj[key].map((val: any) => 
-                                            typeof val === 'string' ? val.trim() : val
-                                        );
-                                    } else if (typeof cleanObj[key] === 'string') {
-                                        cleanObj[key] = cleanObj[key].trim();
-                                    }
-                                });
-                                return cleanObj;
-                            }
-                            return item;
-                        }));
+                    // Handle arrays and objects
+                    if (typeof value === 'object') {
+                        try {
+                            // First convert to string and then parse to ensure valid JSON
+                            const jsonStr = JSON.stringify(value);
+                            JSON.parse(jsonStr); // Validate JSON
+                            return jsonStr;
+                        } catch (e) {
+                            console.error(`Error stringifying field ${field}:`, e);
+                            return null;
+                        }
                     }
                     return value;
                 });
+                
+                console.log('Insert Query:', query);
+                console.log('Insert Values:', values);
                 
                 const result = await pool.query(query, values);
                 return result.rows[0];
             }
         } catch (error) {
             console.error('Error in updateAboutMe:', error);
+            if (error && typeof error === 'object' && 'message' in error) {
+                console.error('Error details:', {
+                    message: (error as any).message,
+                    detail: (error as any).detail,
+                    where: (error as any).where
+                });
+            }
             throw error;
         }
     },
