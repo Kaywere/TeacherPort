@@ -13,7 +13,7 @@ const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-    origin: ['https://test.soss.site', 'http://localhost:5173', 'http://127.0.0.1:5173','http://192.168.1.51:5173'],
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
@@ -26,7 +26,7 @@ const testDatabaseConnection = async () => {
         console.log('Database connection successful:', result.rows[0].now);
     } catch (error) {
         console.error('Database connection failed:', error);
-        process.exit(1); // Exit if database connection fails
+        process.exit(1); 
     }
 };
 
