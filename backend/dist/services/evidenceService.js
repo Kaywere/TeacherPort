@@ -86,14 +86,23 @@ exports.evidenceService = {
                 if (!id) {
                     throw new Error('Evidence ID is required');
                 }
-                const result = yield db_1.default.query(`UPDATE evidences 
-         SET file_data = NULL, 
-             file_name = NULL, 
-             mime_type = NULL, 
-             file_type = NULL,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = $1
-         RETURNING *`, [id]);
+                // First get the current evidence to ensure it exists
+                const evidence = yield this.getEvidenceById(id);
+                if (!evidence) {
+                    throw new Error('Evidence not found');
+                }
+                // Update with empty values instead of NULL to satisfy NOT NULL constraints
+                const result = yield db_1.default.query(`
+                    UPDATE evidences 
+                    SET file_data = '',
+                        file_name = '',
+                        mime_type = 'application/octet-stream',
+                        file_type = 'none',
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = $1
+                    RETURNING *
+                `, [id]);
+                
                 if (!result.rows[0]) {
                     throw new Error('Evidence not found');
                 }
