@@ -33,28 +33,31 @@ export const aboutMeService = {
             // Check if any record exists
             const existingRecord = await this.getAboutMe();
             
+            // Define JSONB fields
+            const jsonbFields = ['education', 'experience', 'skills', 'achievements'];
+            
             if (existingRecord) {
                 // Update existing record
                 // Remove updated_at if present in data
                 const fields = Object.keys(data).filter(field => field !== 'updated_at');
                 const values = fields.map(field => {
                     const value = (data as any)[field];
-                    // Handle arrays and objects
-                    if (typeof value === 'object') {
-                        try {
-                            // First convert to string and then parse to ensure valid JSON
-                            const jsonStr = JSON.stringify(value);
-                            JSON.parse(jsonStr); // Validate JSON
-                            return jsonStr;
-                        } catch (e) {
-                            console.error(`Error stringifying field ${field}:`, e);
-                            return null;
-                        }
+                    // Handle JSONB fields
+                    if (jsonbFields.includes(field)) {
+                        // Ensure the field is an array, even if empty
+                        const arrayValue = Array.isArray(value) ? value : [];
+                        return JSON.stringify(arrayValue);
                     }
                     return value;
                 });
                 
-                const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+                const setClause = fields.map((field, index) => {
+                    // Cast JSONB fields explicitly
+                    if (jsonbFields.includes(field)) {
+                        return `${field} = $${index + 1}::jsonb`;
+                    }
+                    return `${field} = $${index + 1}`;
+                }).join(', ');
                 
                 const query = `
                     UPDATE about_me 
@@ -64,14 +67,20 @@ export const aboutMeService = {
                 `;
                 
                 console.log('Update Query:', query);
-                console.log('Update Values:', values);
+                console.log('Update Values:', JSON.stringify(values, null, 2));
                 
                 const result = await pool.query(query, [...values, existingRecord.id]);
                 return result.rows[0];
             } else {
                 // Insert new record if none exists
                 const fields = Object.keys(data);
-                const placeholders = fields.map((_, index) => `$${index + 1}`).join(', ');
+                const placeholders = fields.map((field, index) => {
+                    // Cast JSONB fields explicitly
+                    if (jsonbFields.includes(field)) {
+                        return `$${index + 1}::jsonb`;
+                    }
+                    return `$${index + 1}`;
+                }).join(', ');
                 const columns = fields.join(', ');
                 
                 const query = `
@@ -82,23 +91,17 @@ export const aboutMeService = {
                 
                 const values = fields.map(field => {
                     const value = (data as any)[field];
-                    // Handle arrays and objects
-                    if (typeof value === 'object') {
-                        try {
-                            // First convert to string and then parse to ensure valid JSON
-                            const jsonStr = JSON.stringify(value);
-                            JSON.parse(jsonStr); // Validate JSON
-                            return jsonStr;
-                        } catch (e) {
-                            console.error(`Error stringifying field ${field}:`, e);
-                            return null;
-                        }
+                    // Handle JSONB fields
+                    if (jsonbFields.includes(field)) {
+                        // Ensure the field is an array, even if empty
+                        const arrayValue = Array.isArray(value) ? value : [];
+                        return JSON.stringify(arrayValue);
                     }
                     return value;
                 });
                 
                 console.log('Insert Query:', query);
-                console.log('Insert Values:', values);
+                console.log('Insert Values:', JSON.stringify(values, null, 2));
                 
                 const result = await pool.query(query, values);
                 return result.rows[0];
