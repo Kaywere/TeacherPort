@@ -148,4 +148,15 @@ router.post('/element/:elementId', (req, res) => __awaiter(void 0, void 0, void 
         res.status(500).json({ error: 'Internal server error' });
     }
 }));
+// حذف شاهد
+router.delete('/:id', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        yield evidenceService_1.evidenceService.deleteEvidence(id);
+        res.json({ message: 'Evidence deleted successfully' });
+    } catch (error) {
+        console.error('Error in DELETE /evidences/:id:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}));
 exports.default = router;

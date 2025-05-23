@@ -225,6 +225,24 @@ export default function Element() {
     }
   };
 
+  const handleDeleteEvidence = async (evidenceId: string) => {
+    try {
+      const response = await fetch(getApiUrl(`api/evidences/${evidenceId}`), {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete evidence');
+      }
+
+      // Remove the deleted evidence from the state
+      setEvidences(evidences.filter(e => e.id !== evidenceId));
+    } catch (error) {
+      console.error('Error deleting evidence:', error);
+      alert('حدث خطأ أثناء حذف الشاهد');
+    }
+  };
+
   useEffect(() => {
     const fetchElementAndEvidences = async () => {
       try {
@@ -404,10 +422,23 @@ export default function Element() {
                       e.stopPropagation();
                       setSelectedEvidence({ ...evidence, isEditing: true });
                     }}
-                    className="absolute top-2 right-2 text-[#E6A0B0] hover:text-[#D48A9A] z-10"
+                    className="absolute top-3 left-3 text-[#E6A0B0] hover:text-[#D48A9A] z-10 bg-white/50 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:shadow-md transition-all duration-300 hover:bg-white hover:scale-110 cursor-pointer"
                   >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (window.confirm('هل أنت متأكد من حذف هذا الشاهد؟')) {
+                        handleDeleteEvidence(evidence.id);
+                      }
+                    }}
+                    className="absolute top-3 right-3 text-red-500 hover:text-red-600 z-10 bg-white/50 backdrop-blur-sm p-1.5 rounded-full shadow-sm hover:shadow-md transition-all duration-300 hover:bg-white hover:scale-110 cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                   <div 
@@ -434,32 +465,38 @@ export default function Element() {
 
               {/* Add New Evidence Card */}
               <div 
-                className="bg-white/80 backdrop-blur-sm p-5 rounded-lg shadow-sm border border-[#FDD5E9] hover:shadow-md transition-all duration-300 relative overflow-hidden group cursor-pointer"
-                onClick={() => setSelectedEvidence({ 
-                  id: '', 
-                  element_id: id || '', 
-                  evidence_number: `${evidences.length + 1}`,
-                  title: '',
-                  description: '',
-                  file_type: 'none',
-                  file_name: '',
-                  mime_type: '',
-                  created_at: '',
-                  updated_at: '',
-                  isEditing: true,
-                  isNew: true
-                })}
+                className="bg-white/50 backdrop-blur-sm p-4 rounded-lg shadow-sm border border-[#FDD5E9] hover:shadow-md transition-all duration-300 relative overflow-hidden group cursor-pointer h-[200px] flex flex-col justify-center"
+                onClick={() => {
+                  // Get the element number from the current element's ID
+                  const elementNumber = element?.id || '1';
+                  const nextEvidenceNumber = `${elementNumber}.${evidences.length + 1}`;
+                  
+                  setSelectedEvidence({ 
+                    id: '', 
+                    element_id: id || '', 
+                    evidence_number: nextEvidenceNumber,
+                    title: '',
+                    description: '',
+                    file_type: 'none',
+                    file_name: '',
+                    mime_type: '',
+                    created_at: '',
+                    updated_at: '',
+                    isEditing: true,
+                    isNew: true
+                  });
+                }}
               >
-                <div className="h-32 mb-4 overflow-hidden rounded-md flex items-center justify-center bg-[#FEF5FB]">
-                  <svg className="w-12 h-12 text-[#E6A0B0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="h-24 mb-3 overflow-hidden rounded-md flex items-center justify-center bg-[#FEF5FB]/50">
+                  <svg className="w-10 h-10 text-[#E6A0B0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-semibold text-[#E6A0B0]">إضافة شاهد جديد</h3>
-                  <span className="text-sm text-gray-500">{evidences.length + 1}</span>
+                  <h3 className="text-base font-semibold text-[#E6A0B0]">إضافة شاهد جديد</h3>
+                  <span className="text-sm text-gray-500">{element?.id || '1'}.{evidences.length + 1}</span>
                 </div>
-                <p className="text-gray-600 text-sm">انقر لإضافة شاهد جديد</p>
+                <p className="text-gray-600 text-xs">انقر لإضافة شاهد جديد</p>
               </div>
             </div>
           </div>

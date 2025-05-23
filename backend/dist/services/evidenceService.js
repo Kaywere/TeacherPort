@@ -161,5 +161,27 @@ exports.evidenceService = {
             console.error('Error in evidenceService.createEvidence:', error);
             throw error;
         }
+    }),
+    // حذف شاهد
+    deleteEvidence: (id) => __awaiter(void 0, void 0, void 0, function* () {
+        try {
+            if (!id) {
+                throw new Error('Evidence ID is required');
+            }
+
+            const result = yield db_1.default.query(
+                'DELETE FROM evidences WHERE id = $1 RETURNING *',
+                [id]
+            );
+
+            if (!result.rows[0]) {
+                throw new Error('Evidence not found');
+            }
+
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error in evidenceService.deleteEvidence:', error);
+            throw error;
+        }
     })
 };
