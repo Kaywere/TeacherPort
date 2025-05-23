@@ -112,4 +112,22 @@ router.delete('/:id/file', (req, res) => __awaiter(void 0, void 0, void 0, funct
         res.status(500).json({ error: 'Internal server error' });
     }
 }));
+// تحديث بيانات الشاهد
+router.put('/:id/update', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const { title, description, evidence_number } = req.body;
+        
+        const result = yield evidenceService_1.evidenceService.updateEvidence(id, {
+            title,
+            description,
+            evidence_number
+        });
+        
+        res.json(result);
+    } catch (error) {
+        console.error('Error in PUT /evidences/:id/update:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}));
 exports.default = router;

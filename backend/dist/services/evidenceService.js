@@ -112,5 +112,33 @@ exports.evidenceService = {
                 throw error;
             }
         });
-    }
+    },
+    // تحديث بيانات الشاهد
+    updateEvidence: (id, { title, description, evidence_number }) => __awaiter(void 0, void 0, void 0, function* () {
+        try {
+            if (!id) {
+                throw new Error('Evidence ID is required');
+            }
+
+            const result = yield db_1.default.query(
+                `UPDATE evidences 
+                 SET title = $1, 
+                     description = $2, 
+                     evidence_number = $3,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $4
+                 RETURNING *`,
+                [title, description, evidence_number, id]
+            );
+
+            if (!result.rows[0]) {
+                throw new Error('Evidence not found');
+            }
+
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error in evidenceService.updateEvidence:', error);
+            throw error;
+        }
+    })
 };
