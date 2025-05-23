@@ -111,4 +111,23 @@ router.delete('/:id/file', async (req, res) => {
   }
 });
 
+// تحديث بيانات الشاهد
+router.put('/:id/update', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, evidence_number } = req.body;
+    
+    const result = await evidenceService.updateEvidence(id, {
+      title,
+      description,
+      evidence_number
+    });
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error in PUT /evidences/:id/update:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 export default router; 

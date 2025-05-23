@@ -122,5 +122,34 @@ export const evidenceService = {
       console.error('Error in evidenceService.deleteEvidenceFile:', error);
       throw error;
     }
+  },
+
+  // تحديث بيانات الشاهد
+  async updateEvidence(id: string, { title, description, evidence_number }: { title: string; description: string; evidence_number: string }): Promise<Evidence> {
+    try {
+      if (!id) {
+        throw new Error('Evidence ID is required');
+      }
+
+      const result = await pool.query(
+        `UPDATE evidences 
+         SET title = $1, 
+             description = $2, 
+             evidence_number = $3,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $4
+         RETURNING *`,
+        [title, description, evidence_number, id]
+      );
+
+      if (!result.rows[0]) {
+        throw new Error('Evidence not found');
+      }
+
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error in evidenceService.updateEvidence:', error);
+      throw error;
+    }
   }
 }; 
