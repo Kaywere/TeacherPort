@@ -130,4 +130,22 @@ router.put('/:id/update', (req, res) => __awaiter(void 0, void 0, void 0, functi
         res.status(500).json({ error: 'Internal server error' });
     }
 }));
+// إنشاء شاهد جديد
+router.post('/element/:elementId', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { elementId } = req.params;
+        const { title, description, evidence_number } = req.body;
+        
+        const result = yield evidenceService_1.evidenceService.createEvidence(elementId, {
+            title,
+            description,
+            evidence_number
+        });
+        
+        res.status(201).json(result);
+    } catch (error) {
+        console.error('Error in POST /evidences/element/:elementId:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}));
 exports.default = router;

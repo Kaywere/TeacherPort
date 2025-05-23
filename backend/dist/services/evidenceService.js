@@ -140,5 +140,26 @@ exports.evidenceService = {
             console.error('Error in evidenceService.updateEvidence:', error);
             throw error;
         }
+    }),
+    // إنشاء شاهد جديد
+    createEvidence: (elementId, { title, description, evidence_number }) => __awaiter(void 0, void 0, void 0, function* () {
+        try {
+            if (!elementId) {
+                throw new Error('Element ID is required');
+            }
+
+            const result = yield db_1.default.query(
+                `INSERT INTO evidences 
+                 (element_id, title, description, evidence_number, file_type, file_name, mime_type, file_data)
+                 VALUES ($1, $2, $3, $4, 'none', '', 'application/octet-stream', '')
+                 RETURNING *`,
+                [elementId, title, description, evidence_number]
+            );
+
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error in evidenceService.createEvidence:', error);
+            throw error;
+        }
     })
 };

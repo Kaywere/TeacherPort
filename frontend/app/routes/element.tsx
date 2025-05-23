@@ -24,12 +24,13 @@ interface Evidence {
   evidence_number: string;
   title: string;
   description: string;
-  file_type: 'pdf' | 'image';
+  file_type: 'pdf' | 'image' | 'none';
   file_name: string;
   mime_type: string;
   created_at: string;
   updated_at: string;
   isEditing?: boolean;
+  isNew?: boolean;
 }
 
 export function meta({ params }: Route.MetaArgs) {
@@ -430,6 +431,36 @@ export default function Element() {
                   <p className="text-gray-600 text-sm">{evidence.description}</p>
                 </div>
               ))}
+
+              {/* Add New Evidence Card */}
+              <div 
+                className="bg-white/80 backdrop-blur-sm p-5 rounded-lg shadow-sm border border-[#FDD5E9] hover:shadow-md transition-all duration-300 relative overflow-hidden group cursor-pointer"
+                onClick={() => setSelectedEvidence({ 
+                  id: '', 
+                  element_id: id || '', 
+                  evidence_number: `${evidences.length + 1}`,
+                  title: '',
+                  description: '',
+                  file_type: 'none',
+                  file_name: '',
+                  mime_type: '',
+                  created_at: '',
+                  updated_at: '',
+                  isEditing: true,
+                  isNew: true
+                })}
+              >
+                <div className="h-32 mb-4 overflow-hidden rounded-md flex items-center justify-center bg-[#FEF5FB]">
+                  <svg className="w-12 h-12 text-[#E6A0B0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-lg font-semibold text-[#E6A0B0]">إضافة شاهد جديد</h3>
+                  <span className="text-sm text-gray-500">{evidences.length + 1}</span>
+                </div>
+                <p className="text-gray-600 text-sm">انقر لإضافة شاهد جديد</p>
+              </div>
             </div>
           </div>
         </div>
@@ -500,35 +531,59 @@ export default function Element() {
                     <button
                       onClick={async () => {
                         try {
-                          const response = await fetch(getApiUrl(`api/evidences/${selectedEvidence.id}/update`), {
-                            method: 'PUT',
-                            headers: {
-                              'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                              title: selectedEvidence.title,
-                              description: selectedEvidence.description,
-                              evidence_number: selectedEvidence.evidence_number,
-                            }),
-                          });
+                          if (selectedEvidence.isNew) {
+                            // Create new evidence
+                            const response = await fetch(getApiUrl(`api/evidences/element/${id}`), {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                title: selectedEvidence.title,
+                                description: selectedEvidence.description,
+                                evidence_number: selectedEvidence.evidence_number,
+                              }),
+                            });
 
-                          if (!response.ok) {
-                            throw new Error('Failed to update evidence');
+                            if (!response.ok) {
+                              throw new Error('Failed to create evidence');
+                            }
+
+                            const newEvidence = await response.json();
+                            setEvidences([...evidences, newEvidence]);
+                            setSelectedEvidence(newEvidence);
+                          } else {
+                            // Update existing evidence
+                            const response = await fetch(getApiUrl(`api/evidences/${selectedEvidence.id}/update`), {
+                              method: 'PUT',
+                              headers: {
+                                'Content-Type': 'application/json',
+                              },
+                              body: JSON.stringify({
+                                title: selectedEvidence.title,
+                                description: selectedEvidence.description,
+                                evidence_number: selectedEvidence.evidence_number,
+                              }),
+                            });
+
+                            if (!response.ok) {
+                              throw new Error('Failed to update evidence');
+                            }
+
+                            const updatedEvidence = await response.json();
+                            setEvidences(evidences.map(e => 
+                              e.id === updatedEvidence.id ? updatedEvidence : e
+                            ));
+                            setSelectedEvidence(null);
                           }
-
-                          const updatedEvidence = await response.json();
-                          setEvidences(evidences.map(e => 
-                            e.id === updatedEvidence.id ? updatedEvidence : e
-                          ));
-                          setSelectedEvidence(null);
                         } catch (error) {
-                          console.error('Error updating evidence:', error);
-                          alert('حدث خطأ أثناء تحديث الشاهد');
+                          console.error('Error saving evidence:', error);
+                          alert('حدث خطأ أثناء حفظ الشاهد');
                         }
                       }}
                       className="bg-[#E6A0B0] hover:bg-[#D48A9A] text-white py-2 px-4 rounded-lg transition-colors"
                     >
-                      حفظ التغييرات
+                      {selectedEvidence.isNew ? 'إنشاء الشاهد' : 'حفظ التغييرات'}
                     </button>
                     <button
                       onClick={() => setSelectedEvidence(null)}
