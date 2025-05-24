@@ -6,6 +6,7 @@ RUN npm install
 COPY . .
 ENV NODE_ENV=production
 RUN npm run build
+RUN npm run start
 
 FROM nginx:alpine
 COPY --from=build /app/build/server /usr/share/nginx/html
