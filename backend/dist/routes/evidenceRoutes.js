@@ -21,15 +21,17 @@ const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({
     storage: storage,
     limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB max file size
+        fileSize: 50 * 1024 * 1024, // Increased to 50MB max file size for videos
     },
     fileFilter: (req, file, cb) => {
-        // السماح فقط بملفات PDF والصور
-        if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/')) {
+        // Allow PDF, images, and video files
+        if (file.mimetype === 'application/pdf' || 
+            file.mimetype.startsWith('image/') || 
+            file.mimetype.startsWith('video/')) {
             cb(null, true);
         }
         else {
-            cb(new Error('Only PDF and image files are allowed'));
+            cb(new Error('Only PDF, image, and video files are allowed'));
         }
     },
 });
@@ -68,9 +70,29 @@ router.get('/:id/file', (req, res) => __awaiter(void 0, void 0, void 0, function
         if (!evidence) {
             return res.status(404).json({ error: 'Evidence not found' });
         }
+        const fileData = evidence.file_data;
+        const fileSize = fileData.length;
+        const range = req.headers.range;
         res.setHeader('Content-Type', evidence.mime_type);
         res.setHeader('Content-Disposition', `inline; filename="${evidence.file_name}"`);
-        res.send(evidence.file_data);
+
+        if (range && (evidence.mime_type.startsWith('video/') || evidence.mime_type.startsWith('audio/'))) {
+            // Parse Range header
+            const parts = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            const chunkSize = (end - start) + 1;
+            const buffer = fileData.slice(start, end + 1);
+
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+            res.setHeader('Accept-Ranges', 'bytes');
+            res.setHeader('Content-Length', chunkSize);
+            return res.send(buffer);
+        } else {
+            res.setHeader('Content-Length', fileSize);
+            return res.send(fileData);
+        }
     }
     catch (error) {
         console.error('Error in GET /evidences/:id/file:', error);
@@ -87,8 +109,16 @@ router.post('/:id/upload', upload.single('file'), (req, res) => __awaiter(void 0
         if (!evidence) {
             return res.status(404).json({ error: 'Evidence not found' });
         }
-        // تحديث بيانات الملف
-        const fileType = req.file.mimetype === 'application/pdf' ? 'pdf' : 'image';
+        // Update file type detection
+        let fileType;
+        if (req.file.mimetype === 'application/pdf') {
+            fileType = 'pdf';
+        } else if (req.file.mimetype.startsWith('image/')) {
+            fileType = 'image';
+        } else if (req.file.mimetype.startsWith('video/')) {
+            fileType = 'video';
+        }
+        
         yield evidenceService_1.evidenceService.updateEvidenceFile(req.params.id, req.file.buffer, req.file.originalname, req.file.mimetype, fileType);
         res.json({ message: 'File uploaded successfully' });
     }
