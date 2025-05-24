@@ -2,7 +2,7 @@ FROM node:18-alpine as build
 
 WORKDIR /app
 COPY package*.json ./
-RUN npm install --production
+RUN npm install 
 COPY . .
 ENV NODE_ENV=production
 RUN npm run build
