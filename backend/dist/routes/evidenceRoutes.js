@@ -71,6 +71,9 @@ router.get('/:id/file', (req, res) => __awaiter(void 0, void 0, void 0, function
             return res.status(404).json({ error: 'Evidence not found' });
         }
         const fileData = evidence.file_data;
+        if (!fileData) {
+            return res.status(404).json({ error: 'No file found for this evidence' });
+        }
         const fileSize = fileData.length;
         const range = req.headers.range;
         res.setHeader('Content-Type', evidence.mime_type);
